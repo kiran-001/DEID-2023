@@ -1,10 +1,14 @@
 import re
 import sys
+import cProfile
 phone_pattern ='(\d{3}[-\.\s/]??\d{3}[-\.\s/]??\d{4}|\(\d{3}\)\s*\d{3}[-\.\s/]??\d{4})'
 
 # compiling the reg_ex would save sime time!
 ph_reg = re.compile(phone_pattern)
 
+# New age pattern
+age_pattern = r'\b\d{1,3}\s*(?:YEAR|YEARS|YR|YRS|Y\.O\.|YO)\b'
+age_reg = re.compile(age_pattern, re.IGNORECASE)
 
 def check_for_phone(patient,note,chunk, output_handle):
     """
@@ -45,9 +49,18 @@ def check_for_phone(patient,note,chunk, output_handle):
             # write the result to one line of output
             output_handle.write(result+'\n')
 
+def check_for_age(patient, note, chunk, output_handle):
+    offset = 27
+    output_handle.write('Patient {}\tNote {}\n'.format(patient, note))
+    ages_found = re.findall(age_reg, chunk)
+    if ages_found:
+        for age in set(ages_found):
+            print(patient, note, end=' ')
+            print((chunk.find(age) - offset), (chunk.find(age) + len(age) - offset), age)
+            result = str(chunk.find(age) - offset) + ' ' + str(chunk.find(age) - offset) + ' ' + str(chunk.find(age) + len(age) - offset)
+            output_handle.write(result + '\n')            
             
-            
-def deid_phone(text_path= 'id.text', output_path = 'phone.phi'):
+def deid_phone(text_path= 'id.text', output_path = 'age.phi'):
     """
     Inputs: 
         - text_path: path to the file containing patient records
@@ -96,14 +109,13 @@ def deid_phone(text_path= 'id.text', output_path = 'phone.phi'):
                 if len(record_end):
                     # Now we have a full patient note stored in `chunk`, along with patient numerb and note number
                     # pass all to check_for_phone to find any phone numbers in note.
-                    check_for_phone(patient,note,chunk.strip(), output_file)
-                    
+                    #check_for_phone(patient,note,chunk.strip(), output_file)
+                    check_for_age(patient, note, chunk.strip(), output_file)
                     # initialize the chunk for the next note to be read
                     chunk = ''
                 
 if __name__== "__main__":
-        
-    
-    
+
     deid_phone(sys.argv[1], sys.argv[2])
+    cProfile.run('deid_phone()','output.cprof')
     
